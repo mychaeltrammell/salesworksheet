@@ -1,0 +1,899 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Language Access Sales Worksheet</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/vfs_fonts.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .section {
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .checkbox-group {
+            display: flex;
+            gap: 20px;
+        }
+        .buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        #generateLaws {
+            background-color: #4CAF50;
+            color: white;
+        }
+        #downloadPdf {
+            background-color: #2196F3;
+            color: white;
+        }
+        #clearForm {
+            background-color: #f44336;
+            color: white;
+        }
+        #downloadCsv {
+            background-color: #FFC107;
+            color: black;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+            color: #333;
+        }
+        .note {
+            font-style: italic;
+            color: #666;
+            margin-top: 10px;
+        }
+        .error {
+            color: #f44336;
+            font-weight: bold;
+            text-align: center;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Language Access Sales Worksheet</h1>
+        <p>Enter customer details, select sector and state, and indicate funding sources to view applicable federal and state language access laws and compliance requirements.</p>
+
+        <div class="section">
+            <h2>Customer Information</h2>
+            <div class="form-group">
+                <label for="customerName">Customer Name</label>
+                <input type="text" id="customerName" placeholder="Enter customer name">
+            </div>
+            <div class="form-group">
+                <label for="companyName">Company Name</label>
+                <input type="text" id="companyName" placeholder="Enter company name">
+            </div>
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" placeholder="Enter email address">
+            </div>
+            <div class="form-group">
+                <label for="phone">Phone Number</label>
+                <input type="tel" id="phone" placeholder="Enter phone number">
+            </div>
+            <div class="form-group">
+                <label for="companySize">Company Size</label>
+                <select id="companySize">
+                    <option value="">Select Company Size</option>
+                    <option value="Small (1-50 employees)">Small (1-50 employees)</option>
+                    <option value="Medium (51-250 employees)">Medium (51-250 employees)</option>
+                    <option value="Large (251-1000 employees)">Large (251-1000 employees)</option>
+                    <option value="Enterprise (1001+ employees)">Enterprise (1001+ employees)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="appointments">Estimated Interpretation Appointments per Week</label>
+                <input type="number" id="appointments" placeholder="Enter number of appointments">
+            </div>
+            <div class="form-group">
+                <label>Funding Sources</label>
+                <div class="checkbox-group">
+                    <div>
+                        <input type="checkbox" id="federalFunding" value="Federally Funded">
+                        <label for="federalFunding">Federally Funded</label>
+                    </div>
+                    <div>
+                        <input type="checkbox" id="stateFunding" value="State Funded">
+                        <label for="stateFunding">State Funded</label>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="sector">Sector</label>
+                <select id="sector">
+                    <option value="">Select Sector</option>
+                    <option value="law">Law</option>
+                    <option value="healthcare">Healthcare</option>
+                    <option value="social_services">Social Services</option>
+                    <option value="government">Government</option>
+                    <option value="education">Education</option>
+                    <option value="general_employment">General Employment</option>
+                    <option value="finance">Finance</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="state">State</label>
+                <select id="state">
+                    <option value="">Select State</option>
+                    <option value="AL">Alabama</option>
+                    <option value="AK">Alaska</option>
+                    <option value="AZ">Arizona</option>
+                    <option value="AR">Arkansas</option>
+                    <option value="CA">California</option>
+                    <option value="CO">Colorado</option>
+                    <option value="CT">Connecticut</option>
+                    <option value="DE">Delaware</option>
+                    <option value="DC">District of Columbia</option>
+                    <option value="FL">Florida</option>
+                    <option value="GA">Georgia</option>
+                    <option value="HI">Hawaii</option>
+                    <option value="ID">Idaho</option>
+                    <option value="IL">Illinois</option>
+                    <option value="IN">Indiana</option>
+                    <option value="IA">Iowa</option>
+                    <option value="KS">Kansas</option>
+                    <option value="KY">Kentucky</option>
+                    <option value="LA">Louisiana</option>
+                    <option value="ME">Maine</option>
+                    <option value="MD">Maryland</option>
+                    <option value="MA">Massachusetts</option>
+                    <option value="MI">Michigan</option>
+                    <option value="MN">Minnesota</option>
+                    <option value="MS">Mississippi</option>
+                    <option value="MO">Missouri</option>
+                    <option value="MT">Montana</option>
+                    <option value="NE">Nebraska</option>
+                    <option value="NV">Nevada</option>
+                    <option value="NH">New Hampshire</option>
+                    <option value="NJ">New Jersey</option>
+                    <option value="NM">New Mexico</option>
+                    <option value="NY">New York</option>
+                    <option value="NC">North Carolina</option>
+                    <option value="ND">North Dakota</option>
+                    <option value="OH">Ohio</option>
+                    <option value="OK">Oklahoma</option>
+                    <option value="OR">Oregon</option>
+                    <option value="PA">Pennsylvania</option>
+                    <option value="RI">Rhode Island</option>
+                    <option value="SC">South Carolina</option>
+                    <option value="SD">South Dakota</option>
+                    <option value="TN">Tennessee</option>
+                    <option value="TX">Texas</option>
+                    <option value="UT">Utah</option>
+                    <option value="VT">Vermont</option>
+                    <option value="VA">Virginia</option>
+                    <option value="WA">Washington</option>
+                    <option value="WV">West Virginia</option>
+                    <option value="WI">Wisconsin</option>
+                    <option value="WY">Wyoming</option>
+                </select>
+            </div>
+            <div class="buttons">
+                <button id="generateLaws">Generate Laws</button>
+                <button id="downloadPdf">Download PDF</button>
+                <button id="clearForm">Clear Form</button>
+                <button id="downloadCsv">Download CSV</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Applicable Laws and Compliance Requirements</h2>
+            <div id="error" class="error" style="display: none;"></div>
+            <table id="lawsTable">
+                <thead>
+                    <tr>
+                        <th>Law/Regulation</th>
+                        <th>Description</th>
+                        <th>Compliance Requirements</th>
+                    </tr>
+                </thead>
+                <tbody id="lawsBody"></tbody>
+            </table>
+            <p class="note">Note: For detailed state-specific laws, consult the NCAJ Language Access Index for courts, NHeLP 50-State Survey for healthcare, or state agencies for other sectors.</p>
+        </div>
+    </div>
+
+    <script>
+        // Laws data from JSON
+        const lawsData = {
+            "federal": [
+                {
+                    "name": "Title VI of the Civil Rights Act (1964)",
+                    "description": "Prohibits discrimination based on national origin, including language, in programs receiving federal financial assistance. Requires reasonable steps to reduce language barriers for LEP persons to ensure meaningful access to programs, activities, and services.",
+                    "criteria": {
+                        "law": "Provide timely, competent, no-cost services using certified court interpreters trained in legal terminology (e.g., affidavit). Develop a language access plan based on the four-factor analysis (number of LEP persons, frequency of contact, program importance, resources). Translate vital documents (e.g., court orders, legal notices). Train judicial staff. Avoid untrained staff or family members. Enforced by federal agency investigations, with potential funding termination.",
+                        "healthcare": "Provide free, competent, timely services using qualified interpreters/translators trained in medical terminology (e.g., myocardial infarction). Develop a language access plan based on the four-factor analysis. Translate vital documents (e.g., consent forms, patient instructions). Train staff. Avoid untrained staff. Enforced by federal agency investigations, with potential funding termination.",
+                        "default": "Provide timely, competent, no-cost services using qualified interpreters/translators fluent in English and the target language. Develop a language access plan based on the four-factor analysis (number of LEP persons, frequency of contact, program importance, resources). Translate vital documents (e.g., eligibility notices, program applications). Train staff. Avoid untrained staff. Enforced by federal agency investigations, with potential funding termination."
+                    }
+                },
+                {
+                    "name": "Section 1557 of the Affordable Care Act",
+                    "description": "Ensures healthcare providers receiving federal funds provide free, competent, and timely language assistance to LEP individuals for meaningful access to health programs and activities. Enforced by the Office for Civil Rights (OCR).",
+                    "criteria": {
+                        "healthcare": "Provide free services (interpreters, translated documents) at no cost to patients. Use qualified interpreters proficient in English and another language, trained in medical terminology, ethics, and cultural competency (including dialects), ensuring accurate, impartial communication without changes, omissions, or additions, preserving tone and confidentiality (use different interpreter if known to patient). Use qualified translators with similar standards for written documents. Ensure timely access during appointments to avoid delays. Develop a language access plan. Post multilingual nondiscrimination notices (“taglines”). Translate vital documents (e.g., medical forms, billing notices). Train staff. Avoid untrained staff. Enforced by OCR investigations."
+                    }
+                }
+            ],
+            "state": {
+                "CA": [
+                    {
+                        "sector": "law",
+                        "name": "Evidence Code § 756",
+                        "description": "Requires certified interpreters in court proceedings.",
+                        "criteria": "Use certified court interpreters trained in legal terminology; translate legal documents (e.g., court orders); ensure accuracy and impartiality; train staff."
+                    },
+                    {
+                        "sector": "law",
+                        "name": "Strategic Plan for Language Access (2015)",
+                        "description": "Ensures access in all 58 superior courts.",
+                        "criteria": "Provide free interpreters in all proceedings; develop language access plans; translate vital documents; train staff."
+                    },
+                    {
+                        "sector": "healthcare",
+                        "name": "Medi-Cal Language Access",
+                        "description": "Ensures language access for Medicaid recipients.",
+                        "criteria": "Provide 24-hour oral interpretation; translate notices into top 15 languages; train staff."
+                    },
+                    {
+                        "sector": "healthcare",
+                        "name": "Health and Safety Code",
+                        "description": "Hospitals must provide 24-hour language assistance for ≥5% language groups.",
+                        "criteria": "Ensure 24-hour interpreter availability; post notices in prevalent languages; update policies annually."
+                    },
+                    {
+                        "sector": ["social_services", "government", "education", "finance"],
+                        "name": "Dymally-Alatorre Bilingual Services Act",
+                        "description": "State agencies serving ≥5% non-English-speaking individuals must provide bilingual services.",
+                        "criteria": "Employ bilingual staff or interpreters; translate vital materials (e.g., program applications, notices); conduct biennial language surveys."
+                    },
+                    {
+                        "sector": "general_employment",
+                        "name": "Unemployment Insurance Code § 316",
+                        "description": "Addresses language access for unemployment benefits.",
+                        "criteria": "Provide interpreters for job services; translate employment forms; train staff."
+                    }
+                ],
+                "NE": [
+                    {
+                        "sector": "law",
+                        "name": "Court Interpretation Law (2011)",
+                        "description": "Ensures LEP individuals are not charged for court interpretation.",
+                        "criteria": "Provide free interpreters in court proceedings; train staff."
+                    }
+                ],
+                "NM": [
+                    {
+                        "sector": "law",
+                        "name": "Court Language Access Plan",
+                        "description": "Each court implements a language access plan with bilingual specialists.",
+                        "criteria": "Implement language access plans; provide bilingual specialists; ensure quality language services."
+                    }
+                ],
+                "NH": [
+                    {
+                        "sector": "law",
+                        "name": "Judicial Branch Language Services Plan (2013)",
+                        "description": "Supreme Court order for language services.",
+                        "criteria": "Provide interpreters and translated documents as per the plan; train staff."
+                    }
+                ],
+                "DC": [
+                    {
+                        "sector": "law",
+                        "name": "Superior Court Order (2014)",
+                        "description": "Provides free interpreting services unless waived.",
+                        "criteria": "Provide free interpreters in all case types; train staff."
+                    },
+                    {
+                        "sector": ["healthcare", "social_services", "government"],
+                        "name": "Language Access Act (2004)",
+                        "description": "Requires government agencies to provide multilingual services.",
+                        "criteria": "Provide interpreters; translate vital documents (e.g., program applications); develop language access plans; train staff."
+                    }
+                ],
+                "RI": [
+                    {
+                        "sector": "law",
+                        "name": "Language Assistance Executive Order (2012)",
+                        "description": "Mandates comprehensive, free language assistance.",
+                        "criteria": "Provide free interpreters in all proceedings; develop language access plans; train staff."
+                    }
+                ],
+                "CO": [
+                    {
+                        "sector": "law",
+                        "name": "Language Access Strategic Plan (2012)",
+                        "description": "Issued after 2011 settlement for free interpreters.",
+                        "criteria": "Implement strategic plan; provide free interpreters; translate documents; train staff."
+                    },
+                    {
+                        "sector": "healthcare",
+                        "name": "Managed Care and Medicaid Rules",
+                        "description": "Managed care plans and Medicaid must accommodate LEP needs.",
+                        "criteria": "Use qualified interpreters; translate vital documents (e.g., Medicaid notices); train staff."
+                    }
+                ],
+                "NC": [
+                    {
+                        "sector": "law",
+                        "name": "Court Language Access (2012)",
+                        "description": "Found in violation; working to resolve access issues.",
+                        "criteria": "Ensure meaningful access with interpreters and translations; train staff."
+                    }
+                ],
+                "KY": [
+                    {
+                        "sector": "law",
+                        "name": "Court Language Access Complaint Process (2016)",
+                        "description": "Complaint forms in over 10 languages.",
+                        "criteria": "Provide multilingual complaint forms; process complaints; train staff."
+                    }
+                ],
+                "ME": [
+                    {
+                        "sector": "law",
+                        "name": "Language Access Memorandum (2008)",
+                        "description": "Ensures compliance with language access requirements.",
+                        "criteria": "Provide interpreters and translations as per memorandum; train staff."
+                    }
+                ],
+                "HI": [
+                    {
+                        "sector": "law",
+                        "name": "Court Language Access Policy (2012)",
+                        "description": "Ensures free, competent interpretation in all proceedings.",
+                        "criteria": "Provide free interpreters; revise assignment systems; train staff."
+                    }
+                ],
+                "NJ": [
+                    {
+                        "sector": "law",
+                        "name": "Language Assistance Services (2014)",
+                        "description": "Ensures provision of language services.",
+                        "criteria": "Provide interpreters and translations; train staff."
+                    },
+                    {
+                        "sector": "healthcare",
+                        "name": "Cultural Competency Law",
+                        "description": "Mandates training for healthcare professionals.",
+                        "criteria": "Physicians complete CME on language access; provide interpreters trained in medical terminology; translate vital documents."
+                    }
+                ],
+                "WA": [
+                    {
+                        "sector": "law",
+                        "name": "King County Court Language Access (2015)",
+                        "description": "County-specific efforts for language access.",
+                        "criteria": "Provide interpreters and translations; train staff."
+                    },
+                    {
+                        "sector": "healthcare",
+                        "name": "DSHS LIST Program",
+                        "description": "Certifies interpreters for health services.",
+                        "criteria": "Use certified interpreters trained in medical terminology; provide no-cost services; translate vital documents; train staff."
+                    },
+                    {
+                        "sector": "social_services",
+                        "name": "DSHS LIST Program",
+                        "description": "Certifies interpreters for social services.",
+                        "criteria": "Use certified interpreters; provide no-cost services; translate vital documents (e.g., eligibility forms); train staff."
+                    }
+                ],
+                "AZ": [
+                    {
+                        "sector": "law",
+                        "name": "Mohave County Court Language Access (2015)",
+                        "description": "Improved program with free interpreter services.",
+                        "criteria": "Provide free interpreters; enhance communication; train staff."
+                    },
+                    {
+                        "sector": "healthcare",
+                        "name": "Marketplace and Medicaid Provisions",
+                        "description": "Ensures patient rights awareness and language access.",
+                        "criteria": "Use qualified interpreters; translate vital documents (e.g., insurance notices); develop access plans."
+                    }
+                ],
+                "OH": [
+                    {
+                        "sector": "law",
+                        "name": "Court Language Access Improvements (2016)",
+                        "description": "Improved after 2012 complaint with statewide systems.",
+                        "criteria": "Provide interpreters; translate vital documents; train staff."
+                    }
+                ],
+                "NY": [
+                    {
+                        "sector": ["law", "government"],
+                        "name": "State Language Access Law",
+                        "description": "State agencies must provide language access.",
+                        "criteria": "Translate vital documents into 12 most common languages; provide interpreters; develop language access plans."
+                    },
+                    {
+                        "sector": ["healthcare", "government"],
+                        "name": "NYC Language Access Law",
+                        "description": "City agencies provide interpretation in over 100 languages.",
+                        "criteria": "Translate vital documents into top 10 languages; provide interpreters; train staff; monitor compliance."
+                    }
+                ],
+                "MN": [
+                    {
+                        "sector": "law",
+                        "name": "Judicial Branch Language Access Plan",
+                        "description": "Ensures language access in judicial proceedings.",
+                        "criteria": "Use certified court interpreters trained in legal terminology; translate court documents (e.g., notices, orders); train judicial staff."
+                    },
+                    {
+                        "sector": "healthcare",
+                        "name": "Healthcare Language Access Provisions",
+                        "description": "At least three provisions for healthcare settings.",
+                        "criteria": "Use qualified interpreters trained in medical terminology; translate vital documents (e.g., consent forms); train staff."
+                    }
+                ],
+                "MD": [
+                    {
+                        "sector": ["healthcare", "social_services", "government"],
+                        "name": "LEP Law (2002)",
+                        "description": "Applies to state-funded programs, similar to Title VI.",
+                        "criteria": "Provide language access services; use qualified interpreters; translate vital documents (e.g., program notices); develop language access plans."
+                    }
+                ],
+                "MA": [
+                    {
+                        "sector": ["healthcare", "social_services", "government"],
+                        "name": "Executive Order 615",
+                        "description": "State agencies must develop language access plans.",
+                        "criteria": "Implement language access plans; provide interpreters; translate vital documents (e.g., eligibility notices); train staff."
+                    }
+                ],
+                "AR": [
+                    {
+                        "sector": "healthcare",
+                        "name": "Insurance Provisions",
+                        "description": "Covers language access in insurance marketplaces.",
+                        "criteria": "Use qualified interpreters; translate vital documents (e.g., insurance forms); train staff."
+                    },
+                    {
+                        "sector": "education",
+                        "name": "Individual Educational Programs (IEPs)",
+                        "description": "Ensures language access for LEP parents/students in IEPs.",
+                        "criteria": "Provide interpreters for IEP meetings; translate educational documents (e.g., IEP plans); train staff."
+                    }
+                ],
+                "TX": [
+                    {
+                        "sector": "healthcare",
+                        "name": "Texas Administrative Code",
+                        "description": "Mandates language assistance for health maintenance organizations.",
+                        "criteria": "Use qualified interpreters trained in medical terminology; translate vital documents (e.g., patient forms); train staff."
+                    }
+                ],
+                "AL": [
+                    {
+                        "sector": "healthcare",
+                        "name": "Mental Health Regulations",
+                        "description": "Provisions for community health centers, mental health programs, hospitals.",
+                        "criteria": "Use qualified interpreters trained in medical terminology; translate vital documents (e.g., patient instructions); train staff."
+                    }
+                ],
+                "AK": [
+                    {
+                        "sector": "healthcare",
+                        "name": "Mental Health Regulations",
+                        "description": "Provisions for mental health programs and hospitals.",
+                        "criteria": "Use qualified interpreters trained in medical terminology; translate vital documents (e.g., consent forms); train staff."
+                    }
+                ],
+                "default": [
+                    {
+                        "sector": "law",
+                        "name": "State Court Language Access Policies",
+                        "description": "Most states have court interpreter programs or policies.",
+                        "criteria": "Use certified court interpreters trained in legal terminology; translate legal documents (e.g., notices, orders); develop language access plans; train staff. Consult state judicial websites or NCAJ Justice Index."
+                    },
+                    {
+                        "sector": "healthcare",
+                        "name": "State Healthcare Language Access Provisions",
+                        "description": "All states have at least three provisions for healthcare settings.",
+                        "criteria": "Use qualified interpreters trained in medical terminology; translate vital documents (e.g., consent forms); develop language access plans; train staff. Consult NHeLP 50-State Survey."
+                    },
+                    {
+                        "sector": "social_services",
+                        "name": "State Social Services Language Access Laws",
+                        "description": "Applies to state-funded social services programs.",
+                        "criteria": "Provide interpreters; translate vital documents (e.g., eligibility forms); develop language access plans; train staff. Consult state social services departments."
+                    },
+                    {
+                        "sector": "government",
+                        "name": "State Government Language Access Laws",
+                        "description": "Applies to state-funded government programs.",
+                        "criteria": "Provide interpreters; translate vital documents (e.g., public notices); develop language access plans; train staff. Consult state civil rights commissions."
+                    },
+                    {
+                        "sector": "education",
+                        "name": "State Education Language Access Laws",
+                        "description": "Applies to state-funded education programs.",
+                        "criteria": "Provide interpreters for parent/teacher interactions; translate educational documents (e.g., IEPs); develop language access plans; train staff. Consult state education departments."
+                    },
+                    {
+                        "sector": "general_employment",
+                        "name": "State Employment Language Access Laws",
+                        "description": "Applies to state-funded employment programs.",
+                        "criteria": "Provide interpreters for job training/services; translate vital documents (e.g., employment forms); develop language access plans; train staff. Consult state labor departments."
+                    },
+                    {
+                        "sector": "finance",
+                        "name": "State Finance Language Access Laws",
+                        "description": "Applies to state-funded financial programs.",
+                        "criteria": "Provide interpreters for financial services; translate vital documents (e.g., loan applications); develop language access plans; train staff. Consult state financial regulatory agencies."
+                    }
+                ]
+            }
+        };
+
+        // Helper function to escape CSV values
+        function escapeCsvValue(value) {
+            if (value == null) return '';
+            const stringValue = value.toString();
+            if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+                return `"${stringValue.replace(/"/g, '""')}"`;
+            }
+            return stringValue;
+        }
+
+        // Generate laws based on form input
+        document.getElementById('generateLaws').addEventListener('click', () => {
+            const federalFunding = document.getElementById('federalFunding').checked;
+            const stateFunding = document.getElementById('stateFunding').checked;
+            const sector = document.getElementById('sector').value;
+            const state = document.getElementById('state').value;
+            const appointments = document.getElementById('appointments').value;
+            const lawsBody = document.getElementById('lawsBody');
+            const errorDiv = document.getElementById('error');
+            lawsBody.innerHTML = '';
+            errorDiv.style.display = 'none';
+            errorDiv.textContent = '';
+
+            // Log inputs for debugging
+            console.log('Inputs:', { sector, state, federalFunding, stateFunding, appointments });
+
+            // Validate key inputs
+            if (!sector || !state) {
+                errorDiv.textContent = 'Please select both a Sector and a State to generate laws.';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            let lawsAdded = false;
+
+            // Add federal laws
+            lawsData.federal.forEach(law => {
+                const criteria = law.criteria[sector] || law.criteria.default;
+                if (criteria && (federalFunding || (!federalFunding && !stateFunding))) {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${law.name}</td>
+                        <td>${law.description}</td>
+                        <td>${criteria}</td>
+                    `;
+                    lawsBody.appendChild(row);
+                    lawsAdded = true;
+                }
+            });
+            if (!lawsAdded) {
+                console.log('No federal laws found for sector:', sector);
+            }
+
+            // Add state laws
+            const stateLaws = lawsData.state[state] || lawsData.state.default;
+            stateLaws.forEach(law => {
+                const appliesToSector = Array.isArray(law.sector) ? law.sector.includes(sector) : law.sector === sector;
+                if (appliesToSector && (stateFunding || (!federalFunding && !stateFunding))) {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${law.name}</td>
+                        <td>${law.description}</td>
+                        <td>${law.criteria}</td>
+                    `;
+                    lawsBody.appendChild(row);
+                    lawsAdded = true;
+                }
+            });
+            if (!lawsAdded) {
+                console.log('No state-specific laws found for:', state, sector);
+            }
+
+            // Consider appointment volume (example threshold)
+            if (appointments && parseInt(appointments) > 50) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>High-Volume LEP Service Rule (Example)</td>
+                    <td>Applies to organizations with over 50 interpretation appointments per week.</td>
+                    <td>Implement a dedicated language access coordinator and regular training for staff.</td>
+                `;
+                lawsBody.appendChild(row);
+                lawsAdded = true;
+            }
+
+            if (!lawsAdded) {
+                errorDiv.textContent = 'No applicable laws found for the selected criteria. Try adjusting funding, sector, or state.';
+                errorDiv.style.display = 'block';
+            }
+        });
+
+        // Download PDF functionality
+        document.getElementById('downloadPdf').addEventListener('click', () => {
+            const customerName = document.getElementById('customerName').value || 'N/A';
+            const companyName = document.getElementById('companyName').value || 'N/A';
+            const email = document.getElementById('email').value || 'N/A';
+            const phone = document.getElementById('phone').value || 'N/A';
+            const companySize = document.getElementById('companySize').value || 'N/A';
+            const appointments = document.getElementById('appointments').value || 'N/A';
+            const federalFunding = document.getElementById('federalFunding').checked ? 'Yes' : 'No';
+            const stateFunding = document.getElementById('stateFunding').checked ? 'Yes' : 'No';
+            const sector = document.getElementById('sector').value || 'N/A';
+            const state = document.getElementById('state').value || 'N/A';
+
+            const lawsRows = [];
+            const rows = document.querySelectorAll('#lawsBody tr');
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length === 3) {
+                    lawsRows.push([
+                        cells[0].textContent,
+                        cells[1].textContent,
+                        cells[2].textContent
+                    ]);
+                }
+            });
+
+            const docDefinition = {
+                content: [
+                    { text: 'Language Access Sales Worksheet', style: 'header' },
+                    { text: 'Customer Information', style: 'subheader' },
+                    {
+                        style: 'table',
+                        table: {
+                            widths: ['50%', '50%'],
+                            body: [
+                                ['Customer Name', customerName],
+                                ['Company Name', companyName],
+                                ['Email Address', email],
+                                ['Phone Number', phone],
+                                ['Company Size', companySize],
+                                ['Estimated Interpretation Appointments per Week', appointments],
+                                ['Federally Funded', federalFunding],
+                                ['State Funded', stateFunding],
+                                ['Sector', sector],
+                                ['State', state]
+                            ]
+                        }
+                    },
+                    { text: 'Applicable Laws and Compliance Requirements', style: 'subheader' },
+                    lawsRows.length > 0 ? {
+                        style: 'table',
+                        table: {
+                            widths: ['30%', '35%', '35%'],
+                            headerRows: 1,
+                            body: [
+                                [
+                                    { text: 'Law/Regulation', style: 'tableHeader' },
+                                    { text: 'Description', style: 'tableHeader' },
+                                    { text: 'Compliance Requirements', style: 'tableHeader' }
+                                ],
+                                ...lawsRows
+                            ]
+                        }
+                    } : { text: 'No laws generated yet. Click "Generate Laws" to populate.', style: 'note' },
+                    { text: 'Note: For detailed state-specific laws, consult the NCAJ Language Access Index for courts, NHeLP 50-State Survey for healthcare, or state agencies for other sectors.', style: 'note' }
+                ],
+                styles: {
+                    header: {
+                        fontSize: 18,
+                        bold: true,
+                        margin: [0, 0, 0, 10],
+                        alignment: 'center'
+                    },
+                    subheader: {
+                        fontSize: 14,
+                        bold: true,
+                        margin: [0, 20, 0, 10]
+                    },
+                    table: {
+                        margin: [0, 5, 0, 15]
+                    },
+                    tableHeader: {
+                        bold: true,
+                        fontSize: 12,
+                        color: 'black',
+                        fillColor: '#f2f2f2'
+                    },
+                    note: {
+                        fontSize: 10,
+                        italics: true,
+                        color: '#666',
+                        margin: [0, 10, 0, 0]
+                    }
+                },
+                defaultStyle: {
+                    fontSize: 12
+                }
+            };
+
+            pdfMake.createPdf(docDefinition).download('Language_Access_Sales_Worksheet.pdf');
+        });
+
+        // Download CSV functionality
+        document.getElementById('downloadCsv').addEventListener('click', () => {
+            const customerName = document.getElementById('customerName').value || 'N/A';
+            const companyName = document.getElementById('companyName').value || 'N/A';
+            const email = document.getElementById('email').value || 'N/A';
+            const phone = document.getElementById('phone').value || 'N/A';
+            const companySize = document.getElementById('companySize').value || 'N/A';
+            const appointments = document.getElementById('appointments').value || 'N/A';
+            const federalFunding = document.getElementById('federalFunding').checked ? 'Yes' : 'No';
+            const stateFunding = document.getElementById('stateFunding').checked ? 'Yes' : 'No';
+            const sector = document.getElementById('sector').value || 'N/A';
+            const state = document.getElementById('state').value || 'N/A';
+
+            // Collect laws
+            const lawsRows = [];
+            const rows = document.querySelectorAll('#lawsBody tr');
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length === 3) {
+                    lawsRows.push([
+                        escapeCsvValue(cells[0].textContent),
+                        escapeCsvValue(cells[1].textContent),
+                        escapeCsvValue(cells[2].textContent)
+                    ]);
+                }
+            });
+
+            // Create CSV content
+            const csvRows = [
+                ['Customer Information', '', ''],
+                ['Customer Name', escapeCsvValue(customerName), ''],
+                ['Company Name', escapeCsvValue(companyName), ''],
+                ['Email Address', escapeCsvValue(email), ''],
+                ['Phone Number', escapeCsvValue(phone), ''],
+                ['Company Size', escapeCsvValue(companySize), ''],
+                ['Estimated Interpretation Appointments per Week', escapeCsvValue(appointments), ''],
+                ['Federally Funded', escapeCsvValue(federalFunding), ''],
+                ['State Funded', escapeCsvValue(stateFunding), ''],
+                ['Sector', escapeCsvValue(sector), ''],
+                ['State', escapeCsvValue(state), ''],
+                [''],
+                ['Applicable Laws and Compliance Requirements', '', ''],
+                ['Law/Regulation', 'Description', 'Compliance Requirements'],
+                ...lawsRows,
+                [''],
+                ['Note', 'For detailed state-specific laws, consult the NCAJ Language Access Index for courts, NHeLP 50-State Survey for healthcare, or state agencies for other sectors.', '']
+            ];
+
+            const csvContent = csvRows.map(row => row.join(',')).join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'Language_Access_Sales_Worksheet.csv');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        });
+
+        // Clear form functionality
+        document.getElementById('clearForm').addEventListener('click', () => {
+            document.getElementById('customerName').value = '';
+            document.getElementById('companyName').value = '';
+            document.getElementById('email').value = '';
+            document.getElementById('phone').value = '';
+            document.getElementById('companySize').value = '';
+            document.getElementById('appointments').value = '';
+            document.getElementById('federalFunding').checked = false;
+            document.getElementById('stateFunding').checked = false;
+            document.getElementById('sector').value = '';
+            document.getElementById('state').value = '';
+            document.getElementById('lawsBody').innerHTML = '';
+            document.getElementById('error').style.display = 'none';
+            document.getElementById('error').textContent = '';
+        });
+    </script>
+</body>
+</html>
